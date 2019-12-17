@@ -9,14 +9,18 @@ import U from 'mapbox-gl-utils';
 import { EventBus } from './EventBus';
 import { getFeatures, layer } from './sharedMapApi';
 import boundingBox from 'geojson-bounding-box';
+// const turf = require('@turf/turf');
+// import turf from 'turf';
 export default {
     data: () => ({
         points: undefined,
-        selectedId: undefined
+        selectedId: undefined,
+        selected: undefined,
+        colors: {},
     }),
     async mounted() {
         // replace this Mapbox access token with your own
-        mapboxgl.accessToken = 'pk.eyJ1Ijoic3RldmFnZSIsImEiOiJjazQ2dDMzemcwMnFqM2VvY21rZTJuazl0In0.niqCsX9iAJNdTM9NvdRZ7Q';
+        mapboxgl.accessToken = 'pk.eyJ1Ijoic3RldmFnZSIsImEiOiJjazNmNGV5enAwMTF1M2tuejhtc2twcXo5In0.mLPrYIYJ2FiFZ3KMqVIj6w';
         const map = new mapboxgl.Map({
             container: 'map',
             center: [144.96, -37.81],
@@ -25,13 +29,17 @@ export default {
         });
         U.init(map, mapboxgl);
         window.map = map;
-        window.Map = this;
+        window.app.Map = this;
+        
+        // window.Map = this;
 
         map.U.onLoad(async () => {
             map.U.addGeoJSON('points');
             map.U.addCircle('points-circles', 'points', {
-                circleColor: 'hsl(330,100%,70%)',
-                circleStrokeColor: 'hsl(330,100%,40%)',
+                // circleColor: 'hsl(330,100%,70%)',
+                // circleStrokeColor: 'hsl(330,100%,40%)',
+                circleStrokeColor: 'black',
+                circleColor: ['get', 'color'],
                 // circleStrokeWidth: 3,
                 circleStrokeWidth: ['case',
                     ['to-boolean', ["feature-state", "selected"]], 8,
@@ -51,6 +59,17 @@ export default {
                 circleStrokeColor: 'hsl(120,80%,30%)',
                 circleStrokeWidth: 5,
                 circleRadius: { stops: [[10,3], [12, 10]] }
+            });
+
+            map.U.addGeoJSON('boundaries');
+            map.U.addLine('boundaries-line', 'boundaries', {
+                lineColor: ['get','color'],//'hsl(330, 90%,50%)'
+                lineWidth: 4,
+                lineOffset: 2
+            });
+            map.U.addFill('boundaries-fill','boundaries', {
+                fillColor: ['get','color'],
+                fillOpacity:0.15
             });
             
             map.U.hoverPointer('points-circles');
@@ -84,23 +103,29 @@ export default {
             });
             EventBus.$on('NewFeature-saved', newFeature => {
                 this.points.features.push(newFeature);
-                map.U.setData('points', this.points);
+                this.pointsUpdated(map, this.points);
+
             });
             EventBus.$on('delete-feature', id => {
                 this.points.features = this.points.features.filter(f => f.id !== id);
-                map.U.setData('points', this.points);
+                this.pointsUpdated(map, this.points);
+                this.selected = undefined;
             });        
             EventBus.$on('update-feature', feature => {
                 Object.assign(this.points.features.find(f => f.id === feature._id), feature);
-                map.U.setData('points', this.points);
+                this.pointsUpdated(map, this.points);
             });        
             EventBus.$on('select-feature', feature => {
                 if (this.selectedId) {
                     map.setFeatureState({ source: 'points', id: this.selectedId }, { selected: false });
                 }
                 this.selectedId = feature.id;
+                this.selected = this.points.features.find(p => p.id === feature.id);
+                window.NewFeature.cloneFeature = JSON.parse(JSON.stringify(this.selected));
 
                 map.setFeatureState({ source: 'points', id: feature.id }, { selected: true });
+
+                // EventBus.$emit('start-clone', feature);
             });        
 
             if (layer) {
@@ -109,11 +134,56 @@ export default {
                 if (this.points) {
                     map.fitBounds(boundingBox(this.points), { padding: 60 });
                 }
-                map.U.setData('points', this.points);
+                this.pointsUpdated(map, this.points);
             }
         });
 
     },
+    methods: {
+        pointsUpdated(map, points) {
+            points.features.forEach(point => point.properties.color = getColor(point.properties.name, this.colors));
+            map.U.setData('points', points);
+            updateBoundaries(map, this.points);
+        }
+    }
+
+}
+
+
+function getColor(value, colors) {
+    if (colors[value]) {
+        return colors[value];
+    }
+    const n = Object.keys(colors).length;
+    colors[value] = `hsl(${(n * 80) % 360}, ${100 - n * 3}%, ${70 - n * 2}%)`;
+    console.log(`${value} => ${colors[value]}`);
+    return colors[value];
+
+}
+
+function updateBoundaries(map, points) {
+    // would like to allow a non-rectangular border
+    // const border = turf.convex(points);
+    // const bbox = turf.bbox(points);
+    const bbox = turf.bbox(turf.transformScale(turf.bboxPolygon(turf.bbox(points)), 1.5));
+
+    let boundaries = turf.voronoi(points, { bbox });
+    boundaries.features.forEach((b, i) => b.properties = JSON.parse(JSON.stringify(points.features[i].properties)));
+
+
+    const ids = {};
+    for (const b of boundaries.features) {
+        ids[b.properties.name] = true;
+    }
+    for (const key of Object.keys(ids)) {
+        // boundaries.features.forEach(b => b.properties.dissolve = b.properties.name === key ? 'yes' : 'no')
+        boundaries = turf.dissolve(boundaries, { propertyName: 'name' });
+    }
+
+    console.log(boundaries);
+    map.U.setData('boundaries', boundaries);
+    map.fitBounds(bbox, { padding: 60 });
+
 }
 import 'mapbox-gl/dist/mapbox-gl.css';
 

@@ -1,22 +1,17 @@
 <template lang="pug">
     #app.flex.flex-column.vh-100.avenir
         #top.bb.b--gray.bg-lightest-blue.pa1
-            img.logo.fl.mh2(src="butterfly.svg")
-            h1.f1.ma1 
-                | TinyMap
         #middle.flex.flex-auto
             #sidebar.br.b--light-gray.overflow-auto.shadow-4.z-1.bg-light-gray(:class="{ collapsed: !sidebarOpen}")
                 #mobile-header.bg-lightest-blue.ma0.pa1
-                    img.logo.f5.mh1.fl(src="butterfly.svg")
-                    h1.f3.ma0 TinyMap
 
-                Settings
+                //- Settings
                 FeatureInfo.pa2
                 NewFeature.pa2
             #sidebar-rim.relative.br.bg-light-gray.b--gray.shadow-4.z-1(v-show="!sidebarOpen"  style="width:20px" @click="sidebarOpen = true")
             #map-container.relative.flex-auto
                 Map
-                #sidebarToggle.absolute.bg-light-gray.f3.br.bt.bb.br--right.br-100.b--magenta.bw1.mt3.magenta.pointer.grow.pa1.z-1(@click="toggleSidebar")
+                #sidebarToggle.absolute.bg-light-gray.f3.br.bt.bb.br--right.br-100.b--dark-gray.bw1.mt3.magenta.pointer.grow.pa1.z-1(@click="toggleSidebar")
                   span(v-if="!sidebarOpen")
                     .icono-caretRight.ml0
                   span(v-if="sidebarOpen") 
@@ -24,13 +19,6 @@
 
                 #overlay.absolute
         #bottom.bt.b--light-gray.flex-none.lh-solid.pa1.bg-washed-blue(v-show="sidebarOpen")
-            p.ma0
-                b Disclaimer: 
-                | Do not use this site for anything private or important. There is no security. Your data may be deleted without warning. Absolutely no warranty of any kind.
-            p Created by 
-                a(href="https://twitter.com/stevage1") Steve Bennett
-                | .  
-                a(href="https://github.com/stevage/tinymap") Source code on Github.
 </template>
 
 <script>
@@ -40,6 +28,7 @@ import NewFeature from './components/NewFeature.vue'
 import Settings from './components/Settings.vue'
 import { EventBus } from './components/EventBus';
 
+window.app = {}
 export default {
     name: 'app',
     components: {

@@ -1,7 +1,7 @@
 <template lang="pug">
 #FeatureInfo.ph2.pb3.b--black.ba.pa2.bg-white.ma2(v-show="feature")
     h3.f4 {{ p.name || '(Unnamed item)' }}
-    p {{ p.description || '(No description)'}}
+    //- p {{ p.description || '(No description)'}}
     button.tr.mv2.mr2.f7.link.dim.ph3.pv2.mb2.white.bg-purple.ml-auto(@click="clickEdit" v-show="canEdit()") 
         //- .icono-rename
         | Edit

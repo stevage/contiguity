@@ -1,7 +1,9 @@
 <template lang="pug">
 #NewFeature.mt5(v-show="show")
     p(v-if="mode==='locating'") Click to locate the new item on the map.
-    button.f6.link.dim.ph3.pv2.mb2.dib.white.bg-purple(@click="clickAdd" v-if="mode === ''") New item
+    button.f6.link.dim.ph3.pv2.mb2.dib.white.bg-purple(@click="clickAdd" v-if="mode === ''") 
+        span(v-if="cloneFeature") Copy point
+        span(v-else) New point
     .ba.pa2.b--mid-gray.bg-white(v-if="mode === 'confirming'")
         template(v-for="field in fields")
             label.f5.mb1.db {{ field.title }}
@@ -27,8 +29,9 @@ export default {
         feature: {},
         fields: [
             { title: 'Name', property: 'name', type: 'text' },
-            { title: 'Description', property: 'description', type: 'textarea' },
-        ]
+            // { title: 'Description', property: 'description', type: 'textarea' },
+        ],
+        cloneFeature: undefined
     }),
     created() {
         window.NewFeature = this;
@@ -43,10 +46,20 @@ export default {
                 },
             };
             for (const field of this.fields) {
-                feature.properties[field.property] = ''
+                if (this.cloneFeature) {
+
+                    feature.properties[field.property] = this.cloneFeature.properties[field.property];
+                } else {
+
+                    feature.properties[field.property] = ''
+                }
             };
             this.feature = feature;
-            this.mode = 'confirming'
+            if (this.cloneFeature) {
+                this.clickSave();
+            } else {
+                this.mode = 'confirming'
+            }
         });
         EventBus.$on('edit-feature', feature => {
             const f = JSON.parse(JSON.stringify(feature));
@@ -58,6 +71,10 @@ export default {
             };
             this.mode = 'confirming';
         });
+        EventBus.$on('start-clone', feature => {
+            this.cloneFeature = JSON.parse(JSON.stringify(feature));
+            this.mode = 'locating';
+        });
     },
     computed: {
         show() {
@@ -66,6 +83,7 @@ export default {
     },
     methods: {
         clickAdd() {
+            // this.cloneFeature = undefined;;
             this.mode = 'locating';
         },
         clickCancel() {
